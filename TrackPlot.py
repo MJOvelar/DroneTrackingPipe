@@ -100,6 +100,15 @@ cv2.destroyAllWindows()
 intlist = np.asarray(intlist)
 array = numpy_fillna(intlist)
 
+makeplot = raw_input('do you want plot individual contours?: (Y/N)')
+if makeplot=='Y':
+	#plot
+	for i in np.arange(array.shape[1]):
+	
+		plt.plot(np.arange(array.shape[0]),array[:,i], label='contour'+str(i))
+		plt.legend()
+		plt.show()
+		
 makeplot = raw_input('do you want plot?: (Y/N)')
 if makeplot=='Y':
 	#plot
