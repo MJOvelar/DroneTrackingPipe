@@ -48,7 +48,10 @@ bgr = rgb[:,::-1]
 #cap = cv2.VideoCapture(0)
 cap = cv2.VideoCapture('/Users/nbastian/Desktop/Drones_2016_inNatesMac/Videos/rhino1.avi')
 framecount = 0
+histbins = 256
 intlist = []
+arealist = []
+meancont = []
 
 while True:
 
@@ -58,18 +61,32 @@ while True:
 	framegray = cv2.cvtColor(framegray, cv2.COLOR_RGB2GRAY)
 	framegray[:,580:]=0
 	framecount += 1
+	
+	# attempt to use hist to make adaptive threshold
+	#hist,bins = np.histogram(framegray.ravel(),256,[0,256])
+	#framehist, bin_edges = np.histogram(framegray.ravel(),histbins,[0,256])	
 
 	# masking
-	thresh = 155
+	thresh = 155 #np.percentile(framegray.ravel(),99.4) #real adaptive threshold, which didn't work very well
 	mask = np.where(framegray<=thresh)
-	resim = framegray.copy()
-	resim[mask] = 0
+	resim0 = framegray.copy()
+	resim0[mask] = 0
+	#dilation to get rid of noise before finding contours
+	#CAREFUL with value of intensity since now the animal area
+	#has been convoluted with a kernel!!
+	#also may be worth removing for controlled test
+	kernel = np.ones((5,5),np.uint8)
+	resim = cv2.dilate(resim0,kernel,iterations = 1) # resim0 after dilation
 	
 	#finding and drawing contours
 	contours, hierarchy = cv2.findContours(resim,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+	resim = cv2.dilate(resim0,kernel,iterations = 1)
+	allcontours, allhierarchy = cv2.findContours(resim,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 	
 	# Initialize empty list
 	intlist_frame = []
+	arealist_frame = []
+	meancont_frame = []
 
 	# For each list of contour points...
 	for i in range(len(contours)):
@@ -77,12 +94,16 @@ while True:
 		cimg = np.zeros_like(resim)
 		cv2.drawContours(cimg, contours, i, color=255, thickness=-1)
 		
-		# Access the image pixels and create a 1D numpy array then add to list
+		# Access the image pixels, count them, and create a 1D numpy array then add to list
 		pts = np.where(cimg == 255)
 		intlist_frame.append(np.sum(framegray[pts]))
 		cv2.drawContours(frame, contours, i, bgr[i], 1)		
+		
+		area = len(pts[0])
+		arealist_frame.append(area)		
     	
 	intlist.append(intlist_frame)
+	arealist.append(arealist_frame)
 	#cv2.drawContours(frame, contours, -1, (0,0,255), 1)
 	
 	#plotting
@@ -98,18 +119,39 @@ cv2.destroyAllWindows()
 
 #Making intlist into array to plot
 intlist = np.asarray(intlist)
-array = numpy_fillna(intlist)
+intarray = numpy_fillna(intlist)
 
-makeplot = raw_input('do you want plot?: (Y/N)')
-if makeplot=='Y':
-	#plot
-	for i in np.arange(array.shape[1]):
-	
-		plt.plot(np.arange(array.shape[0]),array[:,i], label='contour'+str(i))
-		
-	plt.legend()	
-	plt.show()
+#same with areas list
+arealist = np.asarray(arealist)
+arearray = numpy_fillna(arealist)
 
-	
+#makeplot = raw_input('do you want plot individual contours?: (Y/N)')
+#if makeplot=='Y':
+#	#plot
+#	for i in np.arange(intarray.shape[1]):
+#	
+#		plt.plot(np.arange(intarray.shape[0]),intarray[:,i], label='contour'+str(i))
+#		plt.legend()
+#		plt.show()
+#		
+#makeplot = raw_input('do you want plot?: (Y/N)')
+#if makeplot=='Y':
+#	#plot
+#	for i in np.arange(intarray.shape[1]):
+#	
+#		plt.plot(np.arange(intarray.shape[0]),intarray[:,i], label='contour'+str(i))
+#		
+#	plt.legend()	
+#	plt.show()
+#
+#makeplot = raw_input('do you want plot surface brightness of countours?: (Y/N)')
+#if makeplot=='Y':
+#	#plot
+#	for i in np.arange(arearray.shape[1]):
+#	
+#		plt.plot(np.arange(arearray.shape[0]),intarray[:,i]/arearray[:,i], label='Surf. Bright. count. '+str(i))
+#		
+#	plt.legend()
+#	plt.show()
 
 
